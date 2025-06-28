@@ -113,14 +113,11 @@ namespace NitroxClient.MonoBehaviours
 
             WaitScreen.Remove(worldSettleItem);
 
-            WaitScreen.ManualWaitItem joiningItem = WaitScreen.Add(Language.main.Get("Nitrox_JoiningSession"));
+            WaitScreen.ManualWaitItem item = WaitScreen.Add(Language.main.Get("Nitrox_JoiningSession"));
             yield return Main.StartCoroutine(Main.StartSession());
-            WaitScreen.Remove(joiningItem);
+            WaitScreen.Remove(item);
 
-            WaitScreen.ManualWaitItem waitingItem = WaitScreen.Add(Language.main.Get("Nitrox_Waiting"));
-            Log.InGame(Language.main.Get("Nitrox_Waiting"));
             yield return new WaitUntil(() => Main.InitialSyncCompleted);
-            WaitScreen.Remove(waitingItem);
 
             SetLoadingComplete();
             OnLoadingComplete?.Invoke();

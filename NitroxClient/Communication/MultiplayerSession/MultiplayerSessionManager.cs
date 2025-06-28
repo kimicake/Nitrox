@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using NitroxClient.Communication.Abstract;
 using NitroxClient.Communication.MultiplayerSession.ConnectionState;
@@ -82,6 +82,14 @@ namespace NitroxClient.Communication.MultiplayerSession
 
         public void RequestSessionReservation(PlayerSettings playerSettings, AuthenticationContext authenticationContext)
         {
+            // If a reservation has already been sent (in which case the client is enqueued in the join queue)
+            if (CurrentState.CurrentStage == MultiplayerSessionConnectionStage.AWAITING_SESSION_RESERVATION)
+            {
+                Log.Info("Waiting in join queue…");
+                Log.InGame(Language.main.Get("Nitrox_Waiting"));
+                return;
+            }
+
             PlayerSettings = playerSettings;
             AuthenticationContext = authenticationContext;
             CurrentState.NegotiateReservationAsync(this);
@@ -89,6 +97,13 @@ namespace NitroxClient.Communication.MultiplayerSession
 
         public void ProcessReservationResponsePacket(MultiplayerSessionReservation reservation)
         {
+            if (reservation.ReservationState == MultiplayerSessionReservationState.ENQUEUED_IN_JOIN_QUEUE)
+            {
+                Log.Info("Waiting in join queue…");
+                Log.InGame(Language.main.Get("Nitrox_Waiting"));
+                return;
+            }
+
             Reservation = reservation;
             CurrentState.NegotiateReservationAsync(this);
         }
@@ -108,7 +123,7 @@ namespace NitroxClient.Communication.MultiplayerSession
 
         public bool Send<T>(T packet) where T : Packet
         {
-            if (Client.IsConnected && !PacketSuppressor<T>.IsSuppressed)
+            if (!PacketSuppressor<T>.IsSuppressed)
             {
                 Client.Send(packet);
                 return true;

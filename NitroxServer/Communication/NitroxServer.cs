@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using NitroxModel.DataStructures;
@@ -26,13 +26,11 @@ namespace NitroxServer.Communication
         protected readonly EntitySimulation entitySimulation;
         protected readonly Dictionary<int, INitroxConnection> connectionsByRemoteIdentifier = new();
         protected readonly PlayerManager playerManager;
-        protected readonly JoiningManager joiningManager;
 
-        public NitroxServer(PacketHandler packetHandler, PlayerManager playerManager, JoiningManager joiningManager, EntitySimulation entitySimulation, SubnauticaServerConfig serverConfig)
+        public NitroxServer(PacketHandler packetHandler, PlayerManager playerManager, EntitySimulation entitySimulation, SubnauticaServerConfig serverConfig)
         {
             this.packetHandler = packetHandler;
             this.playerManager = playerManager;
-            this.joiningManager = joiningManager;
             this.entitySimulation = entitySimulation;
 
             portNumber = serverConfig.ServerPort;
@@ -49,23 +47,24 @@ namespace NitroxServer.Communication
         {
             Player player = playerManager.GetPlayer(connection);
 
-            if (player == null)
+            if (player != null)
             {
-                joiningManager.JoiningPlayerDisconnected(connection);
-                return;
+                playerManager.PlayerDisconnected(connection);
+
+                Disconnect disconnect = new(player.Id);
+                playerManager.SendPacketToAllPlayers(disconnect);
+
+                List<SimulatedEntity> ownershipChanges = entitySimulation.CalculateSimulationChangesFromPlayerDisconnect(player);
+
+                if (ownershipChanges.Count > 0)
+                {
+                    SimulationOwnershipChange ownershipChange = new(ownershipChanges);
+                    playerManager.SendPacketToAllPlayers(ownershipChange);
+                }
             }
-
-            playerManager.PlayerDisconnected(connection);
-
-            Disconnect disconnect = new(player.Id);
-            playerManager.SendPacketToAllPlayers(disconnect);
-
-            List<SimulatedEntity> ownershipChanges = entitySimulation.CalculateSimulationChangesFromPlayerDisconnect(player);
-
-            if (ownershipChanges.Count > 0)
+            else
             {
-                SimulationOwnershipChange ownershipChange = new(ownershipChanges);
-                playerManager.SendPacketToAllPlayers(ownershipChange);
+                playerManager.NonPlayerDisconnected(connection);
             }
         }
 
