@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -40,6 +40,45 @@ public class ThreadSafeQueue<T> : IReadOnlyCollection<T>, ICollection
                 queue = new Queue<T>(value);
             }
         }
+
+        public IEnumerable<T> Clone()
+        {
+            lock (locker)
+            {
+                return CreateCopy(queue);
+            }
+        }
+
+        public void RemoveWhere(Func<T, bool> predicate)
+        {
+            lock (locker)
+            {
+                int count = queue.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    T item = queue.Dequeue();
+                    if (!predicate(item))
+                    {
+                        queue.Enqueue(item);
+                    }
+                }
+            }
+        }
+
+        private Queue<T> CreateCopy(IEnumerable<T> data)
+        {
+            return new Queue<T>(data);
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            lock (locker)
+            {
+                return CreateCopy(queue).GetEnumerator();
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     public int Count
